@@ -104,6 +104,26 @@
 	(or-gate c1 c2 c-out)
 	'ok))
 
+(define (make-time-segment time queue)
+ (cons time queue))
+
+(define (segment-time s) (car s))
+(define (segment-queue s) (cdr c))
+(define (make-agenda) (list 0))
+(define (current-time agenda) (car agenda))
+(define (set-current-time! agenda time)
+ (set-car! agenda time))
+(define (segments agenda) (cdr agenda))
+(define (set-segments! agenda segments)
+ (set-cdr! agenda segments))
+(define (first-segment agenda) (car (segments agenda)))
+(define (rest-segments agenda) (cdr (segments agenda)))
+(define (empty-agenda? agenda)
+ (null? (segments agenda)))
+
+(define (add-to-agenda! time action agenda)
+)
+
 ;;; tests
 (define the-agenda (make-agenda))
 (define inverter-delay 2)
