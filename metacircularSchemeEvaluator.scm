@@ -13,7 +13,10 @@
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
-        ((application? exp) (analyze-application exp))
+        ((application? exp)
+         (apply (actual-value (operator exp) env)
+                (operands exp)
+                env))
         (else
           (error "Unknown expression type -- ANALYZE" exp)))))
 
@@ -78,16 +81,22 @@
         (else
          (error "Unknown procedure type -- EXECUTE-APPLICATION" proc))))
 
+;; lazy evaluation management
+(define (actual-value exp env)
+  (force-it (eval exp env)))
+        
 ;; expression evaluation
 (define (apply procedure arguments)
   (cond ((primitive-procedure? procedure)
-         (apply-primitive-procedure procedure arguments))
+         (apply-primitive-procedure
+          procedure
+          (list-of-arg-values arguments env)))
         ((compound-procedure? procedure)
          (eval-sequence
           (procedure-body procedure)
           (extend-environment
            (procedure-parameters procedure)
-           arguments
+           (list-of-delayed-args arguments env)
            (procedure-environment procedure))))
         (else
          (error "Unknown procedure type -- APPLY" procedure))))
@@ -97,9 +106,20 @@
       '()
       (cons (eval (first-operand exps) env)
             (list-of-values (rest-operands exps) env))))
-
+(define (list-of-arg-values exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (actual-value (first-operand exps) env)
+            (list-of-arg-values (rest-operands exps)
+                                env))))
+(define (list-of-delayed-args exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (delay-it (first-operand exps) env)
+            (list-of-delayed-args (rest-operands exps)
+                                  env))))
 (define (eval-if exp env)
-  (if (true? (eval (if-predicate exp) env))
+  (if (true? (actual-value (if-predicate exp) env))
       (eval (if-consequent exp) env)
       (eval (if-alternative exp) env)))
 
@@ -318,7 +338,8 @@
 (define (driver-loo)
   (prompt-for-input input-prompt)
   (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
+    (let ((output
+           (actual-value input the-global-environment)))
       (announce-output output-prompt)
       (user-print output)))
   (driver-loop))
